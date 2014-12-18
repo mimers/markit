@@ -1,0 +1,12 @@
+canvas#root {
+    border-radius: 3pt;
+    border: gold solid;
+    border-width: 2pt;
+    margin: auto;
+    display: block;
+    min-width: 1080px;
+    /* min-height: 1920px; */
+}
+
+body {
+}
