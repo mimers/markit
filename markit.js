@@ -8,6 +8,7 @@ var font_size = 20;
 var font_style = "18px mono";
 var mark_handle_half_size = 6;
 var cursor_pos = new Point(0, 0);
+var edit_file_name;
 
 function invalidate() {
     need_paint = true;
@@ -40,7 +41,7 @@ function Point(x, y) {
         }
         if (dash) {
             ctx.save();
-            ctx.setLineDash([4,4]);
+            ctx.setLineDash([4, 4]);
         }
         ctx.beginPath();
         ctx.moveTo(mark_x, mark_y);
@@ -73,8 +74,8 @@ function LineMark(start, end) {
         this.start.draw(ctx, this.isVertical(), this == current_line);
         this.end.draw(ctx, this.isVertical(), this == current_line);
         var text = "" + Math.floor(this.length());
-        var center_x = (this.start.x+this.end.x)/2;
-        var center_y = (this.start.y+this.end.y)/2;
+        var center_x = (this.start.x + this.end.x) / 2;
+        var center_y = (this.start.y + this.end.y) / 2;
         ctx.save();
         ctx.strokeStyle = "white";
         ctx.lineWidth = 3;
@@ -120,7 +121,7 @@ function render() {
     if (!background_image.src) {
         var tf = ctx.font;
         ctx.font = '120px serif';
-        ctx.fillText("Drop image here!", root.width/2, root.height/2);
+        ctx.fillText("Drop image here!", root.width / 2, root.height / 2);
         ctx.font = tf;
     };
     ctx.restore();
@@ -128,6 +129,9 @@ function render() {
 }
 
 root.onmousedown = function(event) {
+    if (event.which != 1) {
+        return;
+    }
     current_line = new LineMark(new Point(Math.floor(event.layerX), Math.floor(event.layerY)),
         new Point(Math.floor(event.layerX), Math.floor(event.layerY)));
     new_line_count = 0;
@@ -152,13 +156,16 @@ function adjustLineDirection(line) {
 }
 
 root.onmouseup = function(event) {
+    if (event.which != 1) {
+        return;
+    }
     if (current_line != null && new_line_count == 1) {
         var pix_x = Math.floor(event.layerX);
         var pix_y = Math.floor(event.layerY);
         current_line.end.x = Math.floor(pix_x);
         current_line.end.y = Math.floor(pix_y);
         adjustLineDirection(current_line);
-        if(current_line.length() > 0){
+        if (current_line.length() > 0) {
             mark_lines[mark_lines.length] = current_line;
         }
     }
@@ -169,6 +176,9 @@ root.onmouseup = function(event) {
 }
 
 root.onmousemove = function(event) {
+    if (event.which != 1 && current_line != null) {
+        return;
+    }
     var pix_x = Math.floor(event.layerX);
     var pix_y = Math.floor(event.layerY);
     if (current_line != null) {
@@ -195,6 +205,7 @@ function handleFiles(files) {
                 background_image.src = e.target.result;
                 document.title = "Editing " + theFile.name;
                 invalidate();
+                edit_file_name = theFile.name;
             }
         })(f);
         reader.readAsDataURL(f);
@@ -219,9 +230,33 @@ function handleDrop(event) {
     handleFiles(files);
 }
 
+function save() {
+    if (mark_lines.length > 0) {
+        var blob = new Blob([JSON.stringify(mark_lines)], {
+            type: "application/json;charset=utf-8"
+        });
+        saveAs(edit_file_name + ".json");
+    };
+}
+
+function SaveDatFileBro(localstorage) {
+    localstorage.root.getFile("info.txt", {
+        create: true
+    }, function(DatFile) {
+        DatFile.createWriter(function(DatContent) {
+            var blob = new Blob(["Lorem Ipsum"], {
+                type: "text/plain"
+            });
+            DatContent.write(blob);
+        });
+    });
+}
+
 var select_file = document.getElementById('select-file');
 select_file.addEventListener("change", handleSelectFile, false);
 root.addEventListener("drop", handleDrop, false);
 root.addEventListener("dragover", handleDragOver, false);
-
+navigator.webkitPersistentStorage.requestQuota(1024 * 1024, function() {
+    window.webkitRequestFileSystem(window.PERSISTENT, 1024 * 1024, SaveDatFileBro);
+})
 setInterval(render, 15);
