@@ -1,3 +1,9 @@
+var MARK_MODE = {
+    'LINE': 0,
+    'COLOR': 1,
+    'RECT': 2
+}
+
 var root = document.getElementById('root');
 var mark_lines = [];
 var current_line = null;
@@ -9,6 +15,8 @@ var font_style = "18px mono";
 var mark_handle_half_size = 6;
 var cursor_pos = new Point(0, 0);
 var edit_file_name;
+var mark_mode = MARK_MODE.LINE;
+var mouse_handers = [];
 
 function invalidate() {
     need_paint = true;
@@ -128,15 +136,6 @@ function render() {
     need_paint = false;
 }
 
-root.onmousedown = function(event) {
-    if (event.which != 1) {
-        return;
-    }
-    current_line = new LineMark(new Point(Math.floor(event.layerX), Math.floor(event.layerY)),
-        new Point(Math.floor(event.layerX), Math.floor(event.layerY)));
-    new_line_count = 0;
-    invalidate();
-}
 
 function adjustLineDirection(line) {
     var dst_x, dst_y;
@@ -155,43 +154,58 @@ function adjustLineDirection(line) {
     line.end.y = dst_y;
 }
 
-root.onmouseup = function(event) {
-    if (event.which != 1) {
-        return;
-    }
-    if (current_line != null && new_line_count == 1) {
-        var pix_x = Math.floor(event.layerX);
-        var pix_y = Math.floor(event.layerY);
-        current_line.end.x = Math.floor(pix_x);
-        current_line.end.y = Math.floor(pix_y);
-        adjustLineDirection(current_line);
-        if (current_line.length() > 0) {
-            mark_lines[mark_lines.length] = current_line;
-        }
-    }
-    current_line = null;
-    cursor_pos.x = pix_x;
-    cursor_pos.y = pix_y;
-    invalidate();
-}
+function LineModeHandler() {
 
-root.onmousemove = function(event) {
-    if (event.which != 1 && current_line != null) {
-        return;
+    this.onmousedown = function(event) {
+        if (event.which != 1) {
+            return;
+        }
+        current_line = new LineMark(new Point(Math.floor(event.layerX), Math.floor(event.layerY)),
+            new Point(Math.floor(event.layerX), Math.floor(event.layerY)));
+        new_line_count = 0;
+        invalidate();
     }
-    var pix_x = Math.floor(event.layerX);
-    var pix_y = Math.floor(event.layerY);
-    if (current_line != null) {
-        current_line.end.x = pix_x;
-        current_line.end.y = pix_y;
-        adjustLineDirection(current_line);
-        new_line_count = 1;
-    } else if (cursor_pos.x != pix_x || cursor_pos.y != pix_y) {
+
+    this.onmouseup = function(event) {
+        if (event.which != 1) {
+            return;
+        }
+        if (current_line != null && new_line_count == 1) {
+            var pix_x = Math.floor(event.layerX);
+            var pix_y = Math.floor(event.layerY);
+            current_line.end.x = Math.floor(pix_x);
+            current_line.end.y = Math.floor(pix_y);
+            adjustLineDirection(current_line);
+            if (current_line.length() > 0) {
+                mark_lines[mark_lines.length] = current_line;
+            }
+        }
+        current_line = null;
         cursor_pos.x = pix_x;
         cursor_pos.y = pix_y;
+        invalidate();
     }
-    invalidate();
+
+    this.onmousemove = function(event) {
+        if (event.which != 1 && current_line != null) {
+            return;
+        }
+        var pix_x = Math.floor(event.layerX);
+        var pix_y = Math.floor(event.layerY);
+        if (current_line != null) {
+            current_line.end.x = pix_x;
+            current_line.end.y = pix_y;
+            adjustLineDirection(current_line);
+            new_line_count = 1;
+        } else if (cursor_pos.x != pix_x || cursor_pos.y != pix_y) {
+            cursor_pos.x = pix_x;
+            cursor_pos.y = pix_y;
+        }
+        invalidate();
+    }
+
 }
+
 
 function handleFiles(files) {
     for (var i = 0; i < files.length; i++) {
@@ -206,6 +220,18 @@ function handleFiles(files) {
                 document.title = "Editing " + theFile.name;
                 invalidate();
                 edit_file_name = theFile.name;
+                var savedMark = window.localStorage.getItem(edit_file_name);
+                if (savedMark) {
+                    var saved_lines = JSON.parse(savedMark);
+                    mark_lines = [];
+                    for (var i = 0; i < saved_lines.length; i++) {
+                        var line = saved_lines[i];
+                        mark_lines[i] = new LineMark(new Point(line.start.x, line.start.y),
+                            new Point(line.end.x, line.end.y));
+                        mark_lines[i]._cache_length = line._cache_length;
+                    };
+                    invalidate();
+                }
             }
         })(f);
         reader.readAsDataURL(f);
@@ -232,31 +258,37 @@ function handleDrop(event) {
 
 function save() {
     if (mark_lines.length > 0) {
-        var blob = new Blob([JSON.stringify(mark_lines)], {
-            type: "application/json;charset=utf-8"
-        });
-        saveAs(edit_file_name + ".json");
+        window.localStorage.setItem(edit_file_name, JSON.stringify(mark_lines));
     };
 }
 
-function SaveDatFileBro(localstorage) {
-    localstorage.root.getFile("info.txt", {
-        create: true
-    }, function(DatFile) {
-        DatFile.createWriter(function(DatContent) {
-            var blob = new Blob(["Lorem Ipsum"], {
-                type: "text/plain"
-            });
-            DatContent.write(blob);
-        });
-    });
+function mouse_handler_proxy () {
+    this.onmousedown = function (event) {
+        return mouse_handers[mark_mode].onmousedown(event);
+    }
+    this.onmouseup = function (event) {
+        return mouse_handers[mark_mode].onmouseup(event);
+    }
+    this.onmousemove = function (event) {
+        return mouse_handers[mark_mode].onmousemove(event);
+    }
 }
 
+mouse_handers[MARK_MODE.LINE] = new LineModeHandler();
+var mouse_proxy = new mouse_handler_proxy();
 var select_file = document.getElementById('select-file');
 select_file.addEventListener("change", handleSelectFile, false);
 root.addEventListener("drop", handleDrop, false);
 root.addEventListener("dragover", handleDragOver, false);
-navigator.webkitPersistentStorage.requestQuota(1024 * 1024, function() {
-    window.webkitRequestFileSystem(window.PERSISTENT, 1024 * 1024, SaveDatFileBro);
-})
+root.addEventListener("mousedown", mouse_proxy.onmousedown, false);
+root.addEventListener("mousemove", mouse_proxy.onmousemove, false);
+root.addEventListener("mouseup", mouse_proxy.onmouseup, false);
 setInterval(render, 15);
+
+document.addEventListener("keydown", function(event) {
+    if (event.keycode == 49) {
+
+    } else if (event.keycode == 50) {
+
+    }
+})
