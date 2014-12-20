@@ -3,10 +3,10 @@ var MARK_MODE = {
     'COLOR': 1,
     'RECT': 2
 }
-
 var root = document.getElementById('root');
+var mode_name = document.getElementById('mode-name');
 var mark_lines = [];
-var current_line = null;
+var current_mark = null;
 var need_paint = true;
 var new_line_count = 0;
 var background_image = new Image();
@@ -22,13 +22,21 @@ function invalidate() {
     need_paint = true;
 }
 
+function paint_text(text, x, y, ctx) {
+    ctx.save();
+    ctx.strokeStyle = "white";
+    ctx.lineWidth = 3;
+    ctx.strokeText(text, x, y);
+    ctx.restore();
+    ctx.fillText(text, x, y);
+}
+
 function Point(x, y) {
     this.x = x;
     this.y = y;
     this.distanceTo = function(p) {
         return Math.sqrt((p.x - this.x) * (p.x - this.x) + (p.y - this.y) * (p.y - this.y));
     }
-    this.radius = 5;
     this.draw = function(ctx, vertical, dash) {
         var mark_x = this.x,
             mark_y = this.y;
@@ -66,7 +74,7 @@ function LineMark(start, end) {
     this.end = end;
     this._cache_length = null;
     this.length = function() {
-        if (this == current_line) {
+        if (this == current_mark) {
             this._cache_length = this.start.distanceTo(this.end) + 1;
         }
         return this._cache_length;
@@ -79,18 +87,29 @@ function LineMark(start, end) {
         ctx.moveTo(this.start.x, this.start.y);
         ctx.lineTo(this.end.x, this.end.y);
         ctx.stroke();
-        this.start.draw(ctx, this.isVertical(), this == current_line);
-        this.end.draw(ctx, this.isVertical(), this == current_line);
+        this.start.draw(ctx, this.isVertical(), this == current_mark);
+        this.end.draw(ctx, this.isVertical(), this == current_mark);
         var text = "" + Math.floor(this.length());
         var center_x = (this.start.x + this.end.x) / 2;
         var center_y = (this.start.y + this.end.y) / 2;
-        ctx.save();
-        ctx.strokeStyle = "white";
-        ctx.lineWidth = 3;
-        ctx.strokeText(text, center_x, center_y);
-        ctx.restore();
-        ctx.fillText(text, center_x, center_y);
+        paint_text(text, center_x, center_y, ctx);
+    }
+}
 
+function ColorMark(position, color, lable) {
+    this.color = color;
+    this.position = position;
+    this.lable = lable;
+    this.draw = function(ctx) {
+        ctx.beginPath();
+        ctx.arc(this.position.x, this.position.y, 5, 0, Math.PI * 2);
+        ctx.moveTo(this.position.x, this.position.y);
+        ctx.lineTo(this.lable.x, this.lable.y);
+        ctx.stroke();
+        ctx.save();
+        ctx.textBaseline = (this.lable.y > this.position.y)?"top":"bottom";
+        paint_text(this.color, this.lable.x, this.lable.y, ctx);
+        ctx.restore();
     }
 }
 
@@ -115,8 +134,8 @@ function render() {
     for (var i in mark_lines) {
         mark_lines[i].draw(ctx);
     }
-    if (current_line != null) {
-        current_line.draw(ctx);
+    if (current_mark != null) {
+        current_mark.draw(ctx);
     } else {
         // draw cursor
         ctx.beginPath();
@@ -136,7 +155,6 @@ function render() {
     need_paint = false;
 }
 
-
 function adjustLineDirection(line) {
     var dst_x, dst_y;
     var abs_x = Math.abs(line.end.x - line.start.x);
@@ -154,48 +172,66 @@ function adjustLineDirection(line) {
     line.end.y = dst_y;
 }
 
-function LineModeHandler() {
+function adjustColorMarkDirection(line) {
+    var delta_x = line.lable.x - line.position.x;
+    var delta_y = line.lable.y - line.position.y;
+    var same_sign = (delta_y > 0) == (delta_x > 0);
+    console.log("same:"+same_sign+" delta_x:"+delta_x+" delta_y:"+delta_y);
+    if (same_sign) {
+        var origin_sign = (delta_x > 0) ? 1 : -1;
+        delta_y = origin_sign * Math.min(Math.abs(delta_x), Math.abs(delta_y));
+        delta_x = delta_y;
+    } else {
+        if (delta_y > 0) {
+            delta_y = Math.min(delta_y, -delta_x);
+            delta_x = -delta_y;
+        } else {
+            delta_y = -Math.min(-delta_y, delta_x);
+            delta_x = -delta_y;
+        }
+    }
+    line.lable.x = line.position.x + delta_x;
+    line.lable.y = line.position.y + delta_y;
+}
 
+function LineModeHandler() {
     this.onmousedown = function(event) {
         if (event.which != 1) {
             return;
         }
-        current_line = new LineMark(new Point(Math.floor(event.layerX), Math.floor(event.layerY)),
-            new Point(Math.floor(event.layerX), Math.floor(event.layerY)));
+        current_mark = new LineMark(new Point(Math.floor(event.layerX), Math.floor(event.layerY)), new Point(Math.floor(event.layerX), Math.floor(event.layerY)));
         new_line_count = 0;
         invalidate();
     }
-
     this.onmouseup = function(event) {
         if (event.which != 1) {
             return;
         }
-        if (current_line != null && new_line_count == 1) {
+        if (current_mark != null && new_line_count == 1) {
             var pix_x = Math.floor(event.layerX);
             var pix_y = Math.floor(event.layerY);
-            current_line.end.x = Math.floor(pix_x);
-            current_line.end.y = Math.floor(pix_y);
-            adjustLineDirection(current_line);
-            if (current_line.length() > 0) {
-                mark_lines[mark_lines.length] = current_line;
+            current_mark.end.x = Math.floor(pix_x);
+            current_mark.end.y = Math.floor(pix_y);
+            adjustLineDirection(current_mark);
+            if (current_mark.length() > 0) {
+                mark_lines[mark_lines.length] = current_mark;
             }
         }
-        current_line = null;
+        current_mark = null;
         cursor_pos.x = pix_x;
         cursor_pos.y = pix_y;
         invalidate();
     }
-
     this.onmousemove = function(event) {
-        if (event.which != 1 && current_line != null) {
+        if (event.which != 1 && current_mark != null) {
             return;
         }
         var pix_x = Math.floor(event.layerX);
         var pix_y = Math.floor(event.layerY);
-        if (current_line != null) {
-            current_line.end.x = pix_x;
-            current_line.end.y = pix_y;
-            adjustLineDirection(current_line);
+        if (current_mark != null) {
+            current_mark.end.x = pix_x;
+            current_mark.end.y = pix_y;
+            adjustLineDirection(current_mark);
             new_line_count = 1;
         } else if (cursor_pos.x != pix_x || cursor_pos.y != pix_y) {
             cursor_pos.x = pix_x;
@@ -203,9 +239,55 @@ function LineModeHandler() {
         }
         invalidate();
     }
-
 }
 
+function ColorModeHandler() {
+    this.onmousedown = function(event) {
+        if (event.which != 1) {
+            return;
+        }
+        var pix_x = Math.floor(event.layerX);
+        var pix_y = Math.floor(event.layerY);
+        var ctx = root.getContext("2d");
+        var data = ctx.getImageData(pix_x, pix_y, 1, 1).data;
+        var color_str = "rgb(" + data[0] + "," + data[1] + "," + data[2] + ")";
+        current_mark = new ColorMark(new Point(pix_x, pix_y), color_str, new Point(pix_x + 1, pix_y + 1));
+        new_line_count = 0;
+        invalidate();
+    }
+    this.onmousemove = function(event) {
+        if (event.which != 1 && current_mark != null) {
+            return;
+        }
+        var pix_x = Math.floor(event.layerX);
+        var pix_y = Math.floor(event.layerY);
+        if (current_mark == null) {
+            // update cursor position
+            cursor_pos.x = pix_x;
+            cursor_pos.y = pix_y;
+        } else {
+            current_mark.lable.x = pix_x;
+            current_mark.lable.y = pix_y;
+            adjustColorMarkDirection(current_mark);
+            new_line_count = 1;
+        }
+        invalidate();
+    }
+    this.onmouseup = function(event) {
+        if (event.which != 1) {
+            return;
+        }
+        if (current_mark != null && new_line_count == 1) {
+            mark_lines[mark_lines.length] = current_mark;
+        }
+        current_mark = null;
+        var pix_x = Math.floor(event.layerX);
+        var pix_y = Math.floor(event.layerY);
+        cursor_pos.x = pix_x;
+        cursor_pos.y = pix_y;
+        invalidate();
+    }
+}
 
 function handleFiles(files) {
     for (var i = 0; i < files.length; i++) {
@@ -226,8 +308,7 @@ function handleFiles(files) {
                     mark_lines = [];
                     for (var i = 0; i < saved_lines.length; i++) {
                         var line = saved_lines[i];
-                        mark_lines[i] = new LineMark(new Point(line.start.x, line.start.y),
-                            new Point(line.end.x, line.end.y));
+                        mark_lines[i] = new LineMark(new Point(line.start.x, line.start.y), new Point(line.end.x, line.end.y));
                         mark_lines[i]._cache_length = line._cache_length;
                     };
                     invalidate();
@@ -262,19 +343,19 @@ function save() {
     };
 }
 
-function mouse_handler_proxy () {
-    this.onmousedown = function (event) {
+function mouse_handler_proxy() {
+    this.onmousedown = function(event) {
         return mouse_handers[mark_mode].onmousedown(event);
     }
-    this.onmouseup = function (event) {
+    this.onmouseup = function(event) {
         return mouse_handers[mark_mode].onmouseup(event);
     }
-    this.onmousemove = function (event) {
+    this.onmousemove = function(event) {
         return mouse_handers[mark_mode].onmousemove(event);
     }
 }
-
 mouse_handers[MARK_MODE.LINE] = new LineModeHandler();
+mouse_handers[MARK_MODE.COLOR] = new ColorModeHandler();
 var mouse_proxy = new mouse_handler_proxy();
 var select_file = document.getElementById('select-file');
 select_file.addEventListener("change", handleSelectFile, false);
@@ -283,12 +364,13 @@ root.addEventListener("dragover", handleDragOver, false);
 root.addEventListener("mousedown", mouse_proxy.onmousedown, false);
 root.addEventListener("mousemove", mouse_proxy.onmousemove, false);
 root.addEventListener("mouseup", mouse_proxy.onmouseup, false);
-setInterval(render, 15);
-
+setInterval(render, 33);
 document.addEventListener("keydown", function(event) {
-    if (event.keycode == 49) {
-
-    } else if (event.keycode == 50) {
-
+    if (event.keyCode == 49) {
+        mark_mode = MARK_MODE.LINE;
+        mode_name.textContent = "Line";
+    } else if (event.keyCode == 50) {
+        mark_mode = MARK_MODE.COLOR;
+        mode_name.textContent = "Color";
     }
 })
