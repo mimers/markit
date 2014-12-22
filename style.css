@@ -1,6 +1,6 @@
 #root {
     border-radius: 3pt;
-    border: gold solid;
+    border: rgb(251, 176, 64) solid;
     border-width: 2pt;
     margin: auto;
     display: block;
@@ -13,4 +13,5 @@
 }
 
 body {
+    background-image: -webkit-linear-gradient(top,#B69191,#FBB040);
 }

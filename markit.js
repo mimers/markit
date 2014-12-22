@@ -121,7 +121,7 @@ function render() {
     ctx.fillStyle = "white";
     ctx.font = font_style;
     ctx.lineWidth = 0.5;
-    ctx.fillRect(0, 0, root.width, root.height);
+    ctx.clearRect(0, 0, root.width, root.height);
     if (background_image.src) {
         ctx.drawImage(background_image, 0, 0);
     };
@@ -138,12 +138,7 @@ function render() {
         current_mark.draw(ctx);
     } else {
         // draw cursor
-        ctx.beginPath();
-        ctx.moveTo(cursor_pos.x - mark_handle_half_size, cursor_pos.y);
-        ctx.lineTo(cursor_pos.x + mark_handle_half_size, cursor_pos.y);
-        ctx.moveTo(cursor_pos.x, cursor_pos.y - mark_handle_half_size);
-        ctx.lineTo(cursor_pos.x, cursor_pos.y + mark_handle_half_size);
-        ctx.stroke();
+        mouse_handers[mark_mode].drawcursor(ctx);
     }
     if (!background_image.src) {
         var tf = ctx.font;
@@ -239,6 +234,14 @@ function LineModeHandler() {
         }
         invalidate();
     }
+    this.drawcursor = function (ctx) {
+        ctx.beginPath();
+        ctx.moveTo(cursor_pos.x - mark_handle_half_size, cursor_pos.y);
+        ctx.lineTo(cursor_pos.x + mark_handle_half_size, cursor_pos.y);
+        ctx.moveTo(cursor_pos.x, cursor_pos.y - mark_handle_half_size);
+        ctx.lineTo(cursor_pos.x, cursor_pos.y + mark_handle_half_size);
+        ctx.stroke(); 
+    }
 }
 
 function ColorModeHandler() {
@@ -250,7 +253,7 @@ function ColorModeHandler() {
         var pix_y = Math.floor(event.layerY);
         var ctx = root.getContext("2d");
         var data = ctx.getImageData(pix_x, pix_y, 1, 1).data;
-        var color_str = "rgb(" + data[0] + "," + data[1] + "," + data[2] + ")";
+        var color_str = "rgba(" + data[0] + "," + data[1] + "," + data[2] + ","+data[3]+")";
         current_mark = new ColorMark(new Point(pix_x, pix_y), color_str, new Point(pix_x + 1, pix_y + 1));
         new_line_count = 0;
         invalidate();
@@ -286,6 +289,18 @@ function ColorModeHandler() {
         cursor_pos.x = pix_x;
         cursor_pos.y = pix_y;
         invalidate();
+    }
+    this.drawcursor = function (ctx) {
+        ctx.beginPath();
+        ctx.moveTo(cursor_pos.x - mark_handle_half_size, cursor_pos.y);
+        ctx.lineTo(cursor_pos.x-2, cursor_pos.y);
+        ctx.moveTo(cursor_pos.x + 2, cursor_pos.y);
+        ctx.lineTo(cursor_pos.x +  + mark_handle_half_size, cursor_pos.y);
+        ctx.moveTo(cursor_pos.x, cursor_pos.y - mark_handle_half_size);
+        ctx.lineTo(cursor_pos.x, cursor_pos.y-2);
+        ctx.moveTo(cursor_pos.x, cursor_pos.y + 2);
+        ctx.lineTo(cursor_pos.x, cursor_pos.y +  + mark_handle_half_size);
+        ctx.stroke(); 
     }
 }
 
