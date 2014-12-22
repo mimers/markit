@@ -171,7 +171,6 @@ function adjustColorMarkDirection(line) {
     var delta_x = line.lable.x - line.position.x;
     var delta_y = line.lable.y - line.position.y;
     var same_sign = (delta_y > 0) == (delta_x > 0);
-    console.log("same:"+same_sign+" delta_x:"+delta_x+" delta_y:"+delta_y);
     if (same_sign) {
         var origin_sign = (delta_x > 0) ? 1 : -1;
         delta_y = origin_sign * Math.min(Math.abs(delta_x), Math.abs(delta_y));
@@ -194,7 +193,8 @@ function LineModeHandler() {
         if (event.which != 1) {
             return;
         }
-        current_mark = new LineMark(new Point(Math.floor(event.layerX), Math.floor(event.layerY)), new Point(Math.floor(event.layerX), Math.floor(event.layerY)));
+        current_mark = new LineMark(new Point(Math.floor(event.layerX), Math.floor(event.layerY)),
+            new Point(Math.floor(event.layerX), Math.floor(event.layerY)));
         new_line_count = 0;
         invalidate();
     }
@@ -323,8 +323,12 @@ function handleFiles(files) {
                     mark_lines = [];
                     for (var i = 0; i < saved_lines.length; i++) {
                         var line = saved_lines[i];
-                        mark_lines[i] = new LineMark(new Point(line.start.x, line.start.y), new Point(line.end.x, line.end.y));
-                        mark_lines[i]._cache_length = line._cache_length;
+                        if (line.color) {
+                            mark_lines[i] = new ColorMark(new Point(line.position.x, line.position.y), line.color, new Point(line.lable.x, line.lable.y));
+                        } else {
+                            mark_lines[i] = new LineMark(new Point(line.start.x, line.start.y), new Point(line.end.x, line.end.y));
+                            mark_lines[i]._cache_length = line._cache_length;
+                        }
                     };
                     invalidate();
                 }
@@ -384,8 +388,10 @@ document.addEventListener("keydown", function(event) {
     if (event.keyCode == 49) {
         mark_mode = MARK_MODE.LINE;
         mode_name.textContent = "Line";
+        invalidate();
     } else if (event.keyCode == 50) {
         mark_mode = MARK_MODE.COLOR;
         mode_name.textContent = "Color";
+        invalidate();
     }
 })
