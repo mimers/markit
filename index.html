@@ -1,8 +1,32 @@
+<html>
+
 <head>
-    <link rel="stylesheet" type="text/css" href="style.css">
+    <title>Pixelated</title>
+    <link rel="stylesheet" type="text/css" href="markit.css">
 </head>
+
+<body>
 <input id="select-file" type="file" value="select a picture" />
-<button onclick="save()">Save marks</button>
- Current Mode:<span id='mode-name'></span>
-<canvas id="root" width="1080" height="1920"></canvas>
-<script type="text/javascript" src="markit.js"></script>
+    <div id="container">
+    <canvas id="root"></canvas>
+    </div>
+    <table>
+        <tr>
+            <td id="line_mode">Mark</td>
+            <td id="color_mode">Color</td>
+            <td id="rect_mode">Rect</td>
+            <td id="move_mode">Move</td>
+        </tr>
+    </table>
+    <input id="scale" type="range" value="1" min="1" max="5" step="1" />
+    <button onclick="save()">Save marks</button>
+    <img id="image"></img>
+    <script type="text/javascript" src="MarkData.js"></script>
+    <script type="text/javascript" src="DnDHandler.js"></script>
+    <script type="text/javascript" src="MoveHandler.js"></script>
+    <script type="text/javascript" src="LineModeHandler.js"></script>
+    <script type="text/javascript" src="ColorModeHandler.js"></script>
+    <script type="text/javascript" src="markit.js"></script>
+</body>
+
+</html>

@@ -1,7 +1,16 @@
+
+var image_size = new Positon(0, 0);
+var image_pos = new Positon(0, 0);
+image_pos.setElement(container);
+var pointer_pos = new Positon(0, 0);
+var image_scale = 1;
+var image_pading = 12;
+
 var MARK_MODE = {
     'LINE': 0,
     'COLOR': 1,
-    'RECT': 2
+    'RECT': 2,
+    'MOVE': 3
 }
 var root = document.getElementById('root');
 var mode_name = document.getElementById('mode-name');
@@ -16,10 +25,59 @@ var mark_handle_half_size = 6;
 var cursor_pos = new Point(0, 0);
 var edit_file_name;
 var mark_mode = MARK_MODE.LINE;
+var mode_elem = [];
 var mouse_handers = [];
+
+mode_elem[MARK_MODE.LINE] = document.getElementById("line_mode");
+mode_elem[MARK_MODE.COLOR] = document.getElementById("color_mode");
+mode_elem[MARK_MODE.RECT] = document.getElementById("rect_mode");
+mode_elem[MARK_MODE.MOVE] = document.getElementById("move_mode");
+
+image.onload = function () {
+    image_size.x = image.width;
+    image_size.y = image.height;
+    container.style.width = image.width;
+    container.style.height = image.height;
+    root.style.width = image.width;
+    root.style.height = image.height;
+    root.width = image.width;
+    root.height = image.height;
+}
+image.src = "grid.png";
+
+var control = container;
+control.onmousewheel = function(event) {
+    if (event.wheelDelta > 0) {} else {}
+    event.preventDefault();
+}
+var donw_pos = new Positon(0, 0);
+var origin_pos = new Positon(0, 0);
+var draging = false;
+var scale_to_class = ['one_cursor', 'two_cursor', 'three_cursor'];
+
+scale.onchange = function(event) {
+    container.style.width = image_size.x * scale.value;
+    container.style.height = image_size.y * scale.value;
+    var factor = scale.value / image_scale;
+    image_pos.update(Math.floor(image_pos.x * factor - (window.innerWidth / 2) * (factor - 1)),
+        Math.floor(image_pos.y * factor - (window.innerHeight / 2) * (factor - 1)));
+    image.style.left = image_pos.x;
+    image.style.top = image_pos.y;
+    container.classList.remove(scale_to_class[parseInt(image_scale)-1]);
+    container.classList.add(scale_to_class[parseInt(scale.value)-1]);
+    image_scale = scale.value;
+}
+
+function init() {
+    scale.value = 1;
+    container.classList.add('one_cursor');
+}
+
+init();
 
 function invalidate() {
     need_paint = true;
+    requestAnimationFrame(render);
 }
 
 function paint_text(text, x, y, ctx) {
@@ -31,92 +89,12 @@ function paint_text(text, x, y, ctx) {
     ctx.fillText(text, x, y);
 }
 
-function Point(x, y) {
-    this.x = x;
-    this.y = y;
-    this.distanceTo = function(p) {
-        return Math.sqrt((p.x - this.x) * (p.x - this.x) + (p.y - this.y) * (p.y - this.y));
-    }
-    this.draw = function(ctx, vertical, dash) {
-        var mark_x = this.x,
-            mark_y = this.y;
-        var dst_x = this.x,
-            dst_y = this.y;
-        var offset_x = mark_handle_half_size,
-            offset_y = mark_handle_half_size;
-        if (dash) {
-            offset_x = root.width;
-            offset_y = root.height;
-        };
-        if (vertical) {
-            mark_x = this.x - offset_x;
-            dst_x = this.x + offset_x;
-        } else {
-            mark_y = this.y - offset_y;
-            dst_y = this.y + offset_y;
-        }
-        if (dash) {
-            ctx.save();
-            ctx.setLineDash([4, 4]);
-        }
-        ctx.beginPath();
-        ctx.moveTo(mark_x, mark_y);
-        ctx.lineTo(dst_x, dst_y);
-        ctx.stroke();
-        if (dash) {
-            ctx.restore();
-        }
-    }
-}
-
-function LineMark(start, end) {
-    this.start = start;
-    this.end = end;
-    this._cache_length = null;
-    this.length = function() {
-        if (this == current_mark) {
-            this._cache_length = this.start.distanceTo(this.end) + 1;
-        }
-        return this._cache_length;
-    }
-    this.isVertical = function() {
-        return this.end.x == this.start.x;
-    }
-    this.draw = function(ctx) {
-        ctx.beginPath();
-        ctx.moveTo(this.start.x, this.start.y);
-        ctx.lineTo(this.end.x, this.end.y);
-        ctx.stroke();
-        this.start.draw(ctx, this.isVertical(), this == current_mark);
-        this.end.draw(ctx, this.isVertical(), this == current_mark);
-        var text = "" + Math.floor(this.length());
-        var center_x = (this.start.x + this.end.x) / 2;
-        var center_y = (this.start.y + this.end.y) / 2;
-        paint_text(text, center_x, center_y, ctx);
-    }
-}
-
-function ColorMark(position, color, lable) {
-    this.color = color;
-    this.position = position;
-    this.lable = lable;
-    this.draw = function(ctx) {
-        ctx.beginPath();
-        ctx.arc(this.position.x, this.position.y, 5, 0, Math.PI * 2);
-        ctx.moveTo(this.position.x, this.position.y);
-        ctx.lineTo(this.lable.x, this.lable.y);
-        ctx.stroke();
-        ctx.save();
-        ctx.textBaseline = (this.lable.y > this.position.y)?"top":"bottom";
-        paint_text(this.color, this.lable.x, this.lable.y, ctx);
-        ctx.restore();
-    }
-}
 
 function render() {
     if (!need_paint) {
         return;
     }
+    console.log("render!");
     var ctx = root.getContext('2d');
     ctx.fillStyle = "white";
     ctx.font = font_style;
@@ -142,219 +120,16 @@ function render() {
     }
     if (!background_image.src) {
         var tf = ctx.font;
-        ctx.font = '120px serif';
+        ctx.font = '60px serif';
         ctx.fillText("Drop image here!", root.width / 2, root.height / 2);
         ctx.font = tf;
     };
     ctx.restore();
     need_paint = false;
+    requestAnimationFrame(render);
 }
 
-function adjustLineDirection(line) {
-    var dst_x, dst_y;
-    var abs_x = Math.abs(line.end.x - line.start.x);
-    var abs_y = Math.abs(line.end.y - line.start.y);
-    if (abs_x < abs_y) {
-        // vertical mode
-        dst_x = line.start.x;
-        dst_y = line.end.y;
-    } else {
-        // horizonal mode
-        dst_x = line.end.x;
-        dst_y = line.start.y;
-    }
-    line.end.x = dst_x;
-    line.end.y = dst_y;
-}
 
-function adjustColorMarkDirection(line) {
-    var delta_x = line.lable.x - line.position.x;
-    var delta_y = line.lable.y - line.position.y;
-    var same_sign = (delta_y > 0) == (delta_x > 0);
-    if (same_sign) {
-        var origin_sign = (delta_x > 0) ? 1 : -1;
-        delta_y = origin_sign * Math.min(Math.abs(delta_x), Math.abs(delta_y));
-        delta_x = delta_y;
-    } else {
-        if (delta_y > 0) {
-            delta_y = Math.min(delta_y, -delta_x);
-            delta_x = -delta_y;
-        } else {
-            delta_y = -Math.min(-delta_y, delta_x);
-            delta_x = -delta_y;
-        }
-    }
-    line.lable.x = line.position.x + delta_x;
-    line.lable.y = line.position.y + delta_y;
-}
-
-function LineModeHandler() {
-    this.onmousedown = function(event) {
-        if (event.which != 1) {
-            return;
-        }
-        current_mark = new LineMark(new Point(Math.floor(event.layerX), Math.floor(event.layerY)),
-            new Point(Math.floor(event.layerX), Math.floor(event.layerY)));
-        new_line_count = 0;
-        invalidate();
-    }
-    this.onmouseup = function(event) {
-        if (event.which != 1) {
-            return;
-        }
-        if (current_mark != null && new_line_count == 1) {
-            var pix_x = Math.floor(event.layerX);
-            var pix_y = Math.floor(event.layerY);
-            current_mark.end.x = Math.floor(pix_x);
-            current_mark.end.y = Math.floor(pix_y);
-            adjustLineDirection(current_mark);
-            if (current_mark.length() > 0) {
-                mark_lines[mark_lines.length] = current_mark;
-            }
-        }
-        current_mark = null;
-        cursor_pos.x = pix_x;
-        cursor_pos.y = pix_y;
-        invalidate();
-    }
-    this.onmousemove = function(event) {
-        if (event.which != 1 && current_mark != null) {
-            return;
-        }
-        var pix_x = Math.floor(event.layerX);
-        var pix_y = Math.floor(event.layerY);
-        if (current_mark != null) {
-            current_mark.end.x = pix_x;
-            current_mark.end.y = pix_y;
-            adjustLineDirection(current_mark);
-            new_line_count = 1;
-        } else if (cursor_pos.x != pix_x || cursor_pos.y != pix_y) {
-            cursor_pos.x = pix_x;
-            cursor_pos.y = pix_y;
-        }
-        invalidate();
-    }
-    this.drawcursor = function (ctx) {
-        ctx.beginPath();
-        ctx.moveTo(cursor_pos.x - mark_handle_half_size, cursor_pos.y);
-        ctx.lineTo(cursor_pos.x + mark_handle_half_size, cursor_pos.y);
-        ctx.moveTo(cursor_pos.x, cursor_pos.y - mark_handle_half_size);
-        ctx.lineTo(cursor_pos.x, cursor_pos.y + mark_handle_half_size);
-        ctx.stroke(); 
-    }
-}
-
-function ColorModeHandler() {
-    this.onmousedown = function(event) {
-        if (event.which != 1) {
-            return;
-        }
-        var pix_x = Math.floor(event.layerX);
-        var pix_y = Math.floor(event.layerY);
-        var ctx = root.getContext("2d");
-        var data = ctx.getImageData(pix_x, pix_y, 1, 1).data;
-        var color_str = "rgba(" + data[0] + "," + data[1] + "," + data[2] + ","+data[3]+")";
-        current_mark = new ColorMark(new Point(pix_x, pix_y), color_str, new Point(pix_x + 1, pix_y + 1));
-        new_line_count = 0;
-        invalidate();
-    }
-    this.onmousemove = function(event) {
-        if (event.which != 1 && current_mark != null) {
-            return;
-        }
-        var pix_x = Math.floor(event.layerX);
-        var pix_y = Math.floor(event.layerY);
-        if (current_mark == null) {
-            // update cursor position
-            cursor_pos.x = pix_x;
-            cursor_pos.y = pix_y;
-        } else {
-            current_mark.lable.x = pix_x;
-            current_mark.lable.y = pix_y;
-            adjustColorMarkDirection(current_mark);
-            new_line_count = 1;
-        }
-        invalidate();
-    }
-    this.onmouseup = function(event) {
-        if (event.which != 1) {
-            return;
-        }
-        if (current_mark != null && new_line_count == 1) {
-            mark_lines[mark_lines.length] = current_mark;
-        }
-        current_mark = null;
-        var pix_x = Math.floor(event.layerX);
-        var pix_y = Math.floor(event.layerY);
-        cursor_pos.x = pix_x;
-        cursor_pos.y = pix_y;
-        invalidate();
-    }
-    this.drawcursor = function (ctx) {
-        ctx.beginPath();
-        ctx.moveTo(cursor_pos.x - mark_handle_half_size, cursor_pos.y);
-        ctx.lineTo(cursor_pos.x-2, cursor_pos.y);
-        ctx.moveTo(cursor_pos.x + 2, cursor_pos.y);
-        ctx.lineTo(cursor_pos.x +  + mark_handle_half_size, cursor_pos.y);
-        ctx.moveTo(cursor_pos.x, cursor_pos.y - mark_handle_half_size);
-        ctx.lineTo(cursor_pos.x, cursor_pos.y-2);
-        ctx.moveTo(cursor_pos.x, cursor_pos.y + 2);
-        ctx.lineTo(cursor_pos.x, cursor_pos.y +  + mark_handle_half_size);
-        ctx.stroke(); 
-    }
-}
-
-function handleFiles(files) {
-    for (var i = 0; i < files.length; i++) {
-        var f = files[i];
-        if (!f.type.match("image.*")) {
-            continue;
-        }
-        var reader = new FileReader();
-        reader.onload = (function(theFile) {
-            return function(e) {
-                background_image.src = e.target.result;
-                document.title = "Editing " + theFile.name;
-                invalidate();
-                edit_file_name = theFile.name;
-                var savedMark = window.localStorage.getItem(edit_file_name);
-                if (savedMark) {
-                    var saved_lines = JSON.parse(savedMark);
-                    mark_lines = [];
-                    for (var i = 0; i < saved_lines.length; i++) {
-                        var line = saved_lines[i];
-                        if (line.color) {
-                            mark_lines[i] = new ColorMark(new Point(line.position.x, line.position.y), line.color, new Point(line.lable.x, line.lable.y));
-                        } else {
-                            mark_lines[i] = new LineMark(new Point(line.start.x, line.start.y), new Point(line.end.x, line.end.y));
-                            mark_lines[i]._cache_length = line._cache_length;
-                        }
-                    };
-                    invalidate();
-                }
-            }
-        })(f);
-        reader.readAsDataURL(f);
-        break;
-    };
-}
-
-function handleSelectFile(event) {
-    handleFiles(event.target.files);
-}
-
-function handleDragOver(event) {
-    event.stopPropagation();
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'copy'; // Explicitly show this is a copy.
-}
-
-function handleDrop(event) {
-    event.stopPropagation();
-    event.preventDefault();
-    var files = event.dataTransfer.files;
-    handleFiles(files);
-}
 
 function save() {
     if (mark_lines.length > 0) {
@@ -373,8 +148,21 @@ function mouse_handler_proxy() {
         return mouse_handers[mark_mode].onmousemove(event);
     }
 }
+
+function swith_mode (mode) {
+    mark_mode = mode;
+    for (m in mode_elem) {
+        if (m == mode) {
+            mode_elem[m].className = "current";
+        } else {
+            mode_elem[m].className = '';
+        }
+    }
+}
+
 mouse_handers[MARK_MODE.LINE] = new LineModeHandler();
 mouse_handers[MARK_MODE.COLOR] = new ColorModeHandler();
+mouse_handers[MARK_MODE.MOVE] = new MoveHandler();
 var mouse_proxy = new mouse_handler_proxy();
 var select_file = document.getElementById('select-file');
 select_file.addEventListener("change", handleSelectFile, false);
@@ -383,15 +171,28 @@ root.addEventListener("dragover", handleDragOver, false);
 root.addEventListener("mousedown", mouse_proxy.onmousedown, false);
 root.addEventListener("mousemove", mouse_proxy.onmousemove, false);
 root.addEventListener("mouseup", mouse_proxy.onmouseup, false);
-setInterval(render, 33);
+requestAnimationFrame(render);
+var last_mode = null;
+swith_mode(MARK_MODE.LINE);
 document.addEventListener("keydown", function(event) {
-    if (event.keyCode == 49) {
-        mark_mode = MARK_MODE.LINE;
-        mode_name.textContent = "Line";
-        invalidate();
-    } else if (event.keyCode == 50) {
-        mark_mode = MARK_MODE.COLOR;
-        mode_name.textContent = "Color";
-        invalidate();
+    if (event.keyCode == 0x31) {
+        swith_mode(MARK_MODE.LINE);
+    } else if (event.keyCode == 0x32) {
+        swith_mode(MARK_MODE.COLOR);
+    } else if (event.keyCode == 0x33) {
+        // swith_mode(MARK_MODE.RECT);
+    } else if (event.keyCode == 0x20) {
+        if (mark_mode == MARK_MODE.MOVE) {return;};
+        last_mode = mark_mode;
+        swith_mode(MARK_MODE.MOVE);
     }
+    invalidate();
+})
+
+document.addEventListener("keyup", function (event) {
+    if (event.keyCode == 0x20) {
+        swith_mode(last_mode);
+        last_mode = null;
+    };
+    invalidate();
 })
