@@ -1,12 +1,12 @@
 
 function ColorModeHandler() {
-    this.onmousedown = function(event) {
+    this.onmousedown = function(event) { 
         if (event.which != 1) {
             return;
         }
         var pix_x = Math.floor(event.layerX);
         var pix_y = Math.floor(event.layerY);
-        var ctx = root.getContext("2d");
+        var ctx = image_layer.getContext("2d");
         var data = ctx.getImageData(pix_x, pix_y, 1, 1).data;
         var color_str = "rgba(" + data[0] + "," + data[1] + "," + data[2] + ","+data[3]+")";
         current_mark = new ColorMark(new Point(pix_x, pix_y), color_str, new Point(pix_x + 1, pix_y + 1));

@@ -10,7 +10,7 @@ function handleFiles(files) {
             return function(e) {
                 background_image.src = e.target.result;
                 document.title = "Editing " + theFile.name;
-                invalidate();
+                invalidate(background_image);
                 edit_file_name = theFile.name;
                 var savedMark = window.localStorage.getItem(edit_file_name);
                 if (savedMark) {
@@ -50,3 +50,8 @@ function handleDrop(event) {
     var files = event.dataTransfer.files;
     handleFiles(files);
 }
+
+var select_file = document.getElementById('select-file');
+select_file.addEventListener("change", handleSelectFile, false);
+mark_layer.addEventListener("drop", handleDrop, false);
+mark_layer.addEventListener("dragover", handleDragOver, false);

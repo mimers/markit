@@ -41,8 +41,8 @@ function Point(x, y) {
         var offset_x = mark_handle_half_size,
             offset_y = mark_handle_half_size;
         if (dash) {
-            offset_x = root.width;
-            offset_y = root.height;
+            offset_x = mark_layer.width;
+            offset_y = mark_layer.height;
         };
         if (vertical) {
             mark_x = this.x - offset_x;

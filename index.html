@@ -8,7 +8,8 @@
 <body>
 <input id="select-file" type="file" value="select a picture" />
     <div id="container">
-    <canvas id="root"></canvas>
+    <canvas id="image_layer"></canvas>
+    <canvas id="mark_layer"></canvas>
     </div>
     <table>
         <tr>
@@ -20,7 +21,6 @@
     </table>
     <input id="scale" type="range" value="1" min="1" max="5" step="1" />
     <button onclick="save()">Save marks</button>
-    <img id="image"></img>
     <script type="text/javascript" src="MarkData.js"></script>
     <script type="text/javascript" src="DnDHandler.js"></script>
     <script type="text/javascript" src="MoveHandler.js"></script>

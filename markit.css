@@ -1,17 +1,20 @@
 * {
     margin: 0;
+    font-family: 'Open Sans','Helvetica Neue',Arial,'Hiragino Sans GB','Microsoft YaHei','WenQuanYi Micro Hei';
 }
 
-#root {
-    image-rendering: auto;
+#mark_layer, #image_layer {
+    image-rendering: pixelated;
+    width: 100%;
+    height: 100%;
+    position: absolute;
 }
 
 div#container {
     display: inline-block;
-    background: url(grid.png) no-repeat;
     image-rendering: pixelated;
     position: fixed;
-    width: 300px;
+    width: 800px;
     height: 500px;
     background-size: 100%;
     background-position: left top;
@@ -33,20 +36,18 @@ td {
     width: 4em;
     height: 2em;
     text-align: center;
-    font-family: sans-serif;
     font-weight: 900;
     color: #333;
     box-shadow: 0px 0px 2px;
     border-radius: 2px;
     background-color: rgba(58, 188, 255, 0.52);
+    transition: box-shadow ease 300ms;
 }
 td.current{
     color : rgba(233,233,233, 1);
 }
 td:hover {
     box-shadow: 0px 1px 10px 0px black;
-    background-color: gray;
-    color : rgba(58, 188, 255, 0.52);
 }
 
 #pointer {
