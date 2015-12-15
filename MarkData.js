@@ -108,3 +108,5 @@ function ColorMark(position, color, lable) {
         ctx.restore();
     }
 }
+
+

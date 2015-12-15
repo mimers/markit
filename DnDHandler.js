@@ -55,3 +55,5 @@ var select_file = document.getElementById('select-file');
 select_file.addEventListener("change", handleSelectFile, false);
 mark_layer.addEventListener("drop", handleDrop, false);
 mark_layer.addEventListener("dragover", handleDragOver, false);
+
+
