@@ -1,4 +1,3 @@
-
 var image_size = new Positon(0, 0);
 var image_pos = new Positon(0, 0);
 var pointer_pos = new Positon(0, 0);
@@ -29,9 +28,9 @@ var mode_elem = [];
 var mouse_handlers = [];
 var last_mode = null;
 
-EventFilter = function () {
+EventFilter = function() {
 }
-EventFilter.prototype.filter = function (event) {
+EventFilter.prototype.filter = function(event) {
     this.x = event.x;
     this.y = event.y;
     this.layerX = (event.layerX - image_pos.x) / image_scale;
@@ -58,8 +57,8 @@ scale.onchange = function(event) {
     var factor = scale.value / image_scale;
     image_pos.update(Math.floor(image_pos.x * factor - (window.innerWidth / 2) * (factor - 1)),
         Math.floor(image_pos.y * factor - (window.innerHeight / 2) * (factor - 1)));
-    container.classList.remove(scale_to_class[parseInt(image_scale)-1]);
-    container.classList.add(scale_to_class[parseInt(scale.value)-1]);
+    container.classList.remove(scale_to_class[parseInt(image_scale) - 1]);
+    container.classList.add(scale_to_class[parseInt(scale.value) - 1]);
     image_scale = scale.value;
     invalidate();
 }
@@ -96,10 +95,11 @@ function invalidate(image) {
         image_layer.width = image.width;
         image_layer.height = image.height;
         update_image(image);
-    };
+    }
+    ;
 }
 
-function update_image (image) {
+function update_image(image) {
     var ctx = image_layer.getContext('2d');
     ctx.drawImage(image, 0, 0);
 }
@@ -137,22 +137,20 @@ function render() {
         current_mark.draw(ctx);
     }
     if (!background_image.src) {
-        var tf = ctx.font;
-        ctx.font = "60px 'Open Sans','Helvetica Neue',Arial,'Hiragino Sans GB','Microsoft YaHei','WenQuanYi Micro Hei'"
+        ctx.font = '24px serif'
         ctx.fillText("Drop image here!", mark_layer.width / 2, mark_layer.height / 2);
-        ctx.font = tf;
-    };
+    }
     ctx.restore();
     need_paint = false;
     requestAnimationFrame(render);
 }
 
 
-
 function save() {
     if (mark_lines.length > 0) {
         window.localStorage.setItem(edit_file_name, JSON.stringify(mark_lines));
-    };
+    }
+    ;
 }
 
 function mouse_handler_proxy() {
@@ -171,7 +169,7 @@ function mouse_handler_proxy() {
     }
 }
 
-function swith_mode (mode) {
+function swith_mode(mode) {
     mark_mode = mode;
     console.log('mode', mode)
     for (m in mode_elem) {
@@ -192,7 +190,10 @@ document.addEventListener("keydown", function(event) {
     } else if (event.keyCode == 0x33) {
         // swith_mode(MARK_MODE.RECT);
     } else if (event.keyCode == 0x20) {
-        if (mark_mode == MARK_MODE.MOVE) {return;};
+        if (mark_mode == MARK_MODE.MOVE) {
+            return;
+        }
+        ;
         last_mode = mark_mode;
         image_pos.setElement(container);
         swith_mode(MARK_MODE.MOVE);
@@ -200,11 +201,12 @@ document.addEventListener("keydown", function(event) {
     invalidate();
 })
 
-document.addEventListener("keyup", function (event) {
+document.addEventListener("keyup", function(event) {
     if (event.keyCode == 0x20) {
         swith_mode(last_mode);
         last_mode = null;
-    };
+    }
+    ;
     invalidate();
 })
 
