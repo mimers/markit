@@ -10,7 +10,7 @@ function handleFiles(files) {
             return function(e) {
                 background_image.src = e.target.result;
                 document.title = "Editing " + theFile.name;
-                invalidate(background_image);
+                background_image.onload = () => invalidate(background_image);
                 edit_file_name = theFile.name;
                 var savedMark = window.localStorage.getItem(edit_file_name);
                 if (savedMark) {

@@ -26,7 +26,7 @@ var cursor_pos = new Point(0, 0);
 var edit_file_name;
 var mark_mode = MARK_MODE.LINE;
 var mode_elem = [];
-var mouse_handers = [];
+var mouse_handlers = [];
 var last_mode = null;
 
 EventFilter = function () {
@@ -71,9 +71,9 @@ function init() {
     mode_elem[MARK_MODE.MOVE] = document.getElementById("move_mode");
     scale.value = 1;
     container.classList.add('one_cursor');
-    mouse_handers[MARK_MODE.LINE] = new LineModeHandler();
-    mouse_handers[MARK_MODE.COLOR] = new ColorModeHandler();
-    mouse_handers[MARK_MODE.MOVE] = new MoveHandler();
+    mouse_handlers[MARK_MODE.LINE] = new LineModeHandler();
+    mouse_handlers[MARK_MODE.COLOR] = new ColorModeHandler();
+    mouse_handlers[MARK_MODE.MOVE] = new MoveHandler();
     mark_layer.addEventListener("mousedown", mouse_proxy.onmousedown, false);
     mark_layer.addEventListener("mousemove", mouse_proxy.onmousemove, false);
     mark_layer.addEventListener("mouseup", mouse_proxy.onmouseup, false);
@@ -158,20 +158,22 @@ function save() {
 function mouse_handler_proxy() {
     this.onmousedown = function(event) {
         filterd_event.filter(event);
-        return mouse_handers[mark_mode].onmousedown(filterd_event);
+        console.log('proyx', mark_mode)
+        return mouse_handlers[mark_mode].onmousedown(filterd_event);
     }
     this.onmouseup = function(event) {
         filterd_event.filter(event);
-        return mouse_handers[mark_mode].onmouseup(filterd_event);
+        return mouse_handlers[mark_mode].onmouseup(filterd_event);
     }
     this.onmousemove = function(event) {
         filterd_event.filter(event);
-        return mouse_handers[mark_mode].onmousemove(filterd_event);
+        return mouse_handlers[mark_mode].onmousemove(filterd_event);
     }
 }
 
 function swith_mode (mode) {
     mark_mode = mode;
+    console.log('mode', mode)
     for (m in mode_elem) {
         if (m == mode) {
             mode_elem[m].classList.add("current");
@@ -192,6 +194,7 @@ document.addEventListener("keydown", function(event) {
     } else if (event.keyCode == 0x20) {
         if (mark_mode == MARK_MODE.MOVE) {return;};
         last_mode = mark_mode;
+        image_pos.setElement(container);
         swith_mode(MARK_MODE.MOVE);
     }
     invalidate();
